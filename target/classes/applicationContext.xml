@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.3.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.3.xsd">
+
+	<!-- 加载外部文件 -->
+	<context:property-placeholder location="classpath:db.properties"/>
+	
+	<!-- 扫描包 -->
+	<context:component-scan base-package="com.zhidi.dao,com.zhidi.service"/>
+	
+	<!-- 数据源 -->
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+		<property name="driverClass" value="${jdbc.driver}"/>	
+		<property name="jdbcUrl" value="${jdbc.url}"/>
+		<property name="user" value="${jdbc.username}"/>
+		<property name="password" value="${jdbc.password}"/>
+		
+		<property name="initialPoolSize" value="1"/>
+		<property name="maxPoolSize" value="10"/>
+		<property name="minPoolSize" value="1"/>
+		<property name="maxConnectionAge" value="28800"/>
+		<property name="maxIdleTime" value="21600"/>
+	</bean>
+	
+	<!-- 配置SqlSessionFactory -->
+	<bean id="sqlSessionFactoryBean" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource"/>
+		<!-- 指定本地的mybatis核心配置,要以classpath:方式加载 -->
+		<property name="configLocation" value="classpath:mybatis-config.xml"></property>
+		<!-- 加载Mapper文件 -->
+		<property name="mapperLocations" value="classpath:mapper/*.xml"/>
+	</bean>
+	
+	<!-- 扫描dao接口所在包，并且自动为其创建代理对象 -->
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<!-- 如果Mapper文件和Dao接口同包同名，就可以不明确加载Mapper文件 -->
+		<property name="basePackage" value="com.zhidi.dao"/>
+	</bean>
+	
+	<!-- 配置Mybatis事务管理器 -->
+	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<!-- 注入数据源 -->
+		<property name="dataSource" ref="dataSource"></property>
+	</bean>
+	
+	<!-- 配置事务通知 -->
+	<tx:advice id="txAdrive" transaction-manager="transactionManager">
+		<tx:attributes>
+			<!-- 需要进行事务管理的方法 -->
+			<tx:method name="add*" propagation="REQUIRED" />
+	 		<tx:method name="save*" propagation="REQUIRED"/>
+	 		<tx:method name="insert*" propagation="REQUIRED"/>
+	 		<tx:method name="persist*" propagation="REQUIRED"/>
+	 		
+	 		<tx:method name="delete*" propagation="REQUIRED"/>
+	 		<tx:method name="remove*" propagation="REQUIRED"/>
+	 		
+	 		<tx:method name="update*" propagation="REQUIRED"/>
+	 		<tx:method name="edit*" propagation="REQUIRED"/>
+	 		<tx:method name="meger*" propagation="REQUIRED"/>
+	 		<tx:method name="modify*" propagation="REQUIRED"/>
+	 		
+	 		<!-- 对于只读操作（仅仅只针对于查询操作），把事务传播行为设置为supports -->
+	 		<tx:method name="get*" propagation="SUPPORTS" read-only="true"/>
+	 		<tx:method name="query*" propagation="SUPPORTS" read-only="true"/>
+	 		<tx:method name="find*" propagation="SUPPORTS" read-only="true"/>
+	 		<tx:method name="load*" propagation="SUPPORTS" read-only="true"/>
+	 		<tx:method name="*" propagation="SUPPORTS" read-only="true"/>
+		</tx:attributes>
+	</tx:advice>
+	
+	<!-- 定义切面，织入通知 -->
+	<aop:config>
+		<aop:advisor advice-ref="txAdrive" pointcut="execution (* com.zhidi.service.impl..*.*(..))"/>
+	</aop:config>
+</beans>
+
